@@ -41,7 +41,9 @@ void end_renderer() {
 
 	tc_hide_cursor(false);
 
-	tc_erase_to_origin();
+	tc_set_color_default();
+
+	// tc_erase_to_origin();
 	fflush(stdout);
 }
 
