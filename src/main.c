@@ -1,9 +1,13 @@
+#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "renderer.h"
 #include "tc.h"
+
 
 typedef enum {
 	UP,
@@ -13,39 +17,44 @@ typedef enum {
 } direction_e;
 
 typedef struct {
+	size_t x;
+	size_t y;
+} coord_t;
+
+typedef struct {
+	coord_t *arr;
+	uint16_t size;
+	size_t max_size;
+} body_t; 
+
+typedef struct {
 	cell_type_e board[BOARD_SIZE_X][BOARD_SIZE_Y];
-	uint16_t score;
 	direction_e dir;
 	direction_e old_dir;
-	size_t head_x_pos;
-	size_t head_y_pos;
-} game_data_t;
+	body_t body; 
+	coord_t apple_pos;
+} snake_t;
 
-static game_data_t game_data;
+static snake_t snake;
 
-void read_input();
-void move_snake();
-void end_game();
+static void increase_snake_size();
+static void init_data();
+static void read_input();
+static void move_snake();
+static void end_game();
+static void spawn_new_apple();
+
 
 int main() {
+	srand(time(NULL));
 	init_renderer();
 
-	memset(&game_data, 0, sizeof(game_data));
-	for(size_t x = 0;x < BOARD_SIZE_X;x++) {
-		for(size_t y = 0;y < BOARD_SIZE_Y;y++) {
-			game_data.board[x][y] = NOTHING;
-		}
-	}
+	init_data();
 
-	game_data.board[0][0] = SNAKE_HEAD;
-	game_data.head_x_pos = 0;
-	game_data.head_y_pos = 0;
-	game_data.old_dir = DOWN;
-	game_data.dir = DOWN;
 	while(true) {
 		read_input();
 		move_snake();
-		render_board(game_data.board);
+		render_board(snake.board);
 		usleep(200000);
 	}
 
@@ -53,26 +62,53 @@ int main() {
 
 	return 0;
 }
+static void increase_snake_size() {
+	if(snake.body.size >= snake.body.max_size) {
+		snake.body.arr = (coord_t*)realloc(snake.body.arr, (snake.body.max_size + 1) * sizeof(coord_t));
+		assert(snake.body.arr != NULL);
+		snake.body.max_size++;
+	}
+	snake.body.size++;
+}
+static void init_data() {
+	memset(&snake, 0, sizeof(snake));
+	for(size_t x = 0;x < BOARD_SIZE_X;x++) {
+		for(size_t y = 0;y < BOARD_SIZE_Y;y++) {
+			snake.board[x][y] = NOTHING;
+		}
+	}
+
+	snake.board[0][0] = SNAKE;
+	snake.old_dir = DOWN;
+	snake.dir = DOWN;
+
+	snake.body.arr = (coord_t*)malloc(INITIAL_SNAKE_SIZE * sizeof(coord_t));
+	snake.body.size = INITIAL_SNAKE_SIZE;
+	snake.body.max_size = INITIAL_SNAKE_SIZE;
+	snake.body.arr[0] = (coord_t){0, 1};
+	snake.body.arr[1] = (coord_t){0, 0};
+
+	snake.board[0][4] = APPLE;
+}
 void read_input() {
-	static tc_keyboard_input_d input = {NULL, 0, NULL, 0};
-	tc_get_pressed_keys(&input);
+	tc_keyboard_input_d input = tc_get_pressed_keys();
 	for(size_t i = 0; i < input.normal_input_size;i++) {
 		switch(input.normal_input[i]) {
 			case 'w':
 			case 'k':
-				game_data.dir = UP;
+				snake.dir = UP;
 				break;
 			case 's':
 			case 'j':
-				game_data.dir = DOWN;
+				snake.dir = DOWN;
 				break;
 			case 'd':
 			case 'l':
-				game_data.dir = RIGHT;
+				snake.dir = RIGHT;
 				break;
 			case 'a':
 			case 'h':
-				game_data.dir = LEFT;
+				snake.dir = LEFT;
 				break;
 			default:
 		}
@@ -80,85 +116,104 @@ void read_input() {
 	for(size_t i = 0; i < input.escape_input_size;i++) {
 		switch(input.escape_input[i]) {
 			case TC_ARROW_UP:
-				game_data.dir = UP;
+				snake.dir = UP;
 				break;
 			case TC_ARROW_DOWN:
-				game_data.dir = DOWN;
+				snake.dir = DOWN;
 				break;
 			case TC_ARROW_RIGHT:
-				game_data.dir = RIGHT;
+				snake.dir = RIGHT;
 				break;
 			case TC_ARROW_LEFT:
-				game_data.dir = LEFT;
+				snake.dir = LEFT;
 				break;
 			default:
 		}
 	}
-	switch(game_data.old_dir) {
+	switch(snake.old_dir) {
 		case UP:
-			if(game_data.dir != DOWN) {
-				game_data.old_dir = game_data.dir;
+			if(snake.dir != DOWN) {
+				snake.old_dir = snake.dir;
 			} else {
-				game_data.dir = UP;
+				snake.dir = UP;
 			}
 			break;
 		case DOWN:
-			if(game_data.dir != UP) {
-				game_data.old_dir = game_data.dir;
+			if(snake.dir != UP) {
+				snake.old_dir = snake.dir;
 			} else {
-				game_data.dir = DOWN;
+				snake.dir = DOWN;
 			}
 			break;
 		case RIGHT:
-			if(game_data.dir != LEFT) {
-				game_data.old_dir = game_data.dir;
+			if(snake.dir != LEFT) {
+				snake.old_dir = snake.dir;
 			} else {
-				game_data.dir = RIGHT;
+				snake.dir = RIGHT;
 			}
 			break;
 		case LEFT:
-			if(game_data.dir != RIGHT) {
-				game_data.old_dir = game_data.dir;
+			if(snake.dir != RIGHT) {
+				snake.old_dir = snake.dir;
 			} else {
-				game_data.dir = LEFT;
+				snake.dir = LEFT;
 			}
 			break;
 		default:
 	}
 }
 void move_snake() {
-	size_t target_x, target_y;
-	target_x = game_data.head_x_pos;
-	target_y = game_data.head_y_pos;
-	switch(game_data.dir) {
+	coord_t target;
+	target = snake.body.arr[0];
+	switch(snake.dir) {
 		case UP:
-			if(target_y-- <= 0) {
+			if(target.y-- <= 0) {
 				end_game();
 			}
 			break;
 		case DOWN:
-			if(++target_y >= BOARD_SIZE_Y) {
+			if(++target.y >= BOARD_SIZE_Y) {
 				end_game();
 			}
 			break;
 		case RIGHT:
-			if(++target_x >= BOARD_SIZE_X) {
+			if(++target.x >= BOARD_SIZE_X) {
 				end_game();
 			}
 			break;
 		case LEFT:
-			if(target_x-- <= 0) {
+			if(target.x-- <= 0) {
 				end_game();
 			}
 			break;
 		default:
 	}
-	game_data.board[game_data.head_x_pos][game_data.head_y_pos] = SNAKE_BODY;
-	game_data.board[target_x][target_y] = SNAKE_HEAD;
-	game_data.head_x_pos = target_x;
-	game_data.head_y_pos = target_y;
+	snake.board[snake.body.arr[snake.body.size - 1].x][snake.body.arr[snake.body.size - 1].y] = NOTHING;
+	if(snake.board[target.x][target.y] == APPLE) {
+		increase_snake_size();
+		spawn_new_apple();
+	}
+	for(size_t i = snake.body.size - 1; i > 0;i--) {
+		snake.body.arr[i] = snake.body.arr[i - 1];
+	}
+	snake.board[snake.body.arr[0].x][snake.body.arr[0].y] = SNAKE;
+	snake.body.arr[0] = target;
+	snake.board[snake.body.arr[0].x][snake.body.arr[0].y] = SNAKE_HEAD;
 }
 void end_game() {
 	end_renderer();
 	exit(0);
+}
+static void spawn_new_apple() {
+	coord_t target;
+	for(size_t i = 0;i < 1024;i++) {
+		target.x = rand() % BOARD_SIZE_X;
+		target.y = rand() % BOARD_SIZE_Y;
+		if(snake.board[target.x][target.y] == NOTHING) {
+			snake.board[target.x][target.y] = APPLE;
+			return;
+		}
+	}
+	fprintf(stderr, "no place for apple found, aborting\n");
+	end_game();
 }

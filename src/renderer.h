@@ -4,10 +4,10 @@
 #include "game_conf.h"
 
 typedef enum {
-	SNAKE_HEAD,
-	SNAKE_BODY,
-	APPLE,
 	NOTHING,
+	APPLE,
+	SNAKE,
+	SNAKE_HEAD,
 } cell_type_e;
 
 

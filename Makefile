@@ -14,8 +14,8 @@ EXE = main.out
 BUILD_DIR := ./build
 SRC_DIR := ./src
 SEARCH_DEPTH := 10
-EXTRA_CFLAGS := 
-EXTRA_LDFLAGS :=
+EXTRA_CFLAGS := -fanalyzer
+EXTRA_LDFLAGS := -fanalyzer
 
 SRCS := $(shell find $(SRC_DIR) -maxdepth $(SEARCH_DEPTH) -name "*.c") # find source
 OBJS := $(SRCS:%.c=$(BUILD_DIR)/$(target)/%.o) # gen object list

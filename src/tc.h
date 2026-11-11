@@ -102,7 +102,7 @@ void tc_get_terminal_size(uint16_t* rows, uint16_t* colmuns);
 void tc_set_echo_mode(bool echo);
 void tc_set_canonical_mode(bool canon);
 void tc_empty_input_buffer(void);
-void tc_read_raw_input_buffer(char* str); // max size is 4096 
-void tc_get_pressed_keys(tc_keyboard_input_d* keyboard_input); 
+void tc_read_raw_input_buffer(char* str); // max size is 4096 (STDIN_BUFF_SIZE)
+tc_keyboard_input_d tc_get_pressed_keys();
 
 #endif //__TC_H__ 

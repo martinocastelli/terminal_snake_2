@@ -3,12 +3,15 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <assert.h>
 
 #include "tc.h"
 
 static struct termios tty_default, tty_state;
 
 static tc_text_font_d present_state;
+
+static tc_keyboard_input_d last_input = {NULL, 0, NULL, 0};
 
 void tc_init(void) {
 	tcgetattr(STDIN_FILENO, &tty_state);
@@ -187,47 +190,51 @@ void tc_read_raw_input_buffer(char* str) {
 	str[size] = '\0';
 }
 
-void tc_get_pressed_keys(tc_keyboard_input_d* keyboard_input) {
+tc_keyboard_input_d tc_get_pressed_keys() {
 	char buff[STDIN_BUFF_SIZE];
 	tc_read_raw_input_buffer(buff);
-	keyboard_input->normal_input_size = 0;
-	keyboard_input->escape_input_size = 0;
+	last_input.normal_input_size = 0;
+	last_input.escape_input_size = 0;
 	for(size_t i = 0;buff[i] != '\0';i++) {
 		if (buff[i] != '\033') {
-			keyboard_input->normal_input_size++;
-		} else {
-			keyboard_input->escape_input_size++;
+			last_input.normal_input_size++;
+		} else if(buff[i + 1] == '[' && buff[i + 2] != '\0') {
+			last_input.escape_input_size++;
 			i += 2;
 		}
 	}
-	free(keyboard_input->normal_input);
-	keyboard_input->normal_input = (char*)malloc((keyboard_input->normal_input_size + 1)  * sizeof(char));
-	free(keyboard_input->escape_input);
-	keyboard_input->escape_input = (tc_escape_sequence_input_e*)malloc(keyboard_input->escape_input_size  * sizeof(tc_escape_sequence_input_e));
+	free(last_input.normal_input);
+	last_input.normal_input = (char*)malloc((last_input.normal_input_size + 1)  * sizeof(char));
+	free(last_input.escape_input);
+	last_input.escape_input = (tc_escape_sequence_input_e*)malloc(last_input.escape_input_size  * sizeof(tc_escape_sequence_input_e));
+	assert(last_input.normal_input != NULL);
+	assert(last_input.escape_input != NULL);
 
 	size_t x = 0;
 	size_t y = 0;
 	for(size_t i = 0;buff[i] != '\0';i++) {
 		if (buff[i] != '\033') {
-			keyboard_input->normal_input[x++] = buff[i];
+			last_input.normal_input[x++] = buff[i];
 		} else if (buff[i + 1] == '[') {
 			switch(buff[i + 2]) {
 				case 'A': {
-					keyboard_input->escape_input[y++] = TC_ARROW_UP;
+					last_input.escape_input[y++] = TC_ARROW_UP;
 				} break;
 				case 'B': {
-					keyboard_input->escape_input[y++] = TC_ARROW_DOWN;
+					last_input.escape_input[y++] = TC_ARROW_DOWN;
 				} break;
 				case 'C': {
-					keyboard_input->escape_input[y++] = TC_ARROW_RIGHT;
+					last_input.escape_input[y++] = TC_ARROW_RIGHT;
 				} break;
 				case 'D': {
-					keyboard_input->escape_input[y++] = TC_ARROW_LEFT;
+					last_input.escape_input[y++] = TC_ARROW_LEFT;
 				} break;
 				default: {
 				}
 			}
+			i += 2;
 		}
 	}
-	keyboard_input->normal_input[keyboard_input->normal_input_size] = '\0';
+	last_input.normal_input[last_input.normal_input_size] = '\0';
+	return last_input;
 }

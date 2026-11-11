@@ -52,7 +52,7 @@ void render_board(cell_type_e board[BOARD_SIZE_X][BOARD_SIZE_Y]) {
 				case SNAKE_HEAD:
 					print_char('0', x + 1, y + 1);
 					break;
-				case SNAKE_BODY:
+				case SNAKE:
 					print_char('o', x + 1, y + 1);
 					break;
 				case APPLE:
