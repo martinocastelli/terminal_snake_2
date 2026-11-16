@@ -182,22 +182,38 @@ static bool move_snake() {
 	switch(snake.dir) {
 		case UP:
 			if(target.y-- <= 0) {
+#ifdef ENABLE_LOOPING
+				target.y = BOARD_SIZE_Y - 1;
+#else //ENABLE_LOOPING
 				return true;
+#endif //ENABLE_LOOPING
 			}
 			break;
 		case DOWN:
 			if(++target.y >= BOARD_SIZE_Y) {
+#ifdef ENABLE_LOOPING
+				target.y = 0;
+#else //ENABLE_LOOPING
 				return true;
+#endif //ENABLE_LOOPING
 			}
 			break;
 		case RIGHT:
 			if(++target.x >= BOARD_SIZE_X) {
+#ifdef ENABLE_LOOPING
+				target.x = 0;
+#else //ENABLE_LOOPING
 				return true;
+#endif //ENABLE_LOOPING
 			}
 			break;
 		case LEFT:
 			if(target.x-- <= 0) {
+#ifdef ENABLE_LOOPING
+				target.x = BOARD_SIZE_X - 1;
+#else //ENABLE_LOOPING
 				return true;
+#endif //ENABLE_LOOPING
 			}
 			break;
 		default:
@@ -209,7 +225,10 @@ static bool move_snake() {
 			break;
 		case SNAKE:
 		case SNAKE_HEAD:
-			return true;
+			if(snake.body.arr[snake.body.size - 1].x != target.x || snake.body.arr[snake.body.size - 1].y != target.y) {
+				return true;
+			}
+			// FALLTHRU
 		case NOTHING:
 			snake.board[snake.body.arr[snake.body.size - 1].x][snake.body.arr[snake.body.size - 1].y] = NOTHING;
 			break;
