@@ -69,7 +69,7 @@ void end_renderer() {
 	fflush(stdout);
 }
 
-void render_board(cell_type_e board[BOARD_SIZE_X][BOARD_SIZE_Y]) {
+void render_board(cell_type_e board[BOARD_SIZE_X][BOARD_SIZE_Y], uint16_t score, uint16_t best_score) {
 	for(size_t x = 0;x < BOARD_SIZE_X;x++) {
 		for(size_t y = 0;y < BOARD_SIZE_Y;y++) {
 			switch(board[x][y]) {
@@ -107,7 +107,12 @@ void render_board(cell_type_e board[BOARD_SIZE_X][BOARD_SIZE_Y]) {
 			}
 		}
 	}
+	tc_set_color_default();
 	putchar('\n');
+	tc_move_to(1, BOARD_SIZE_X + 3);
+	printf("score: %u", score);
+	tc_move_to(2, BOARD_SIZE_X + 3);
+	printf("best score: %u", best_score);
 	fflush(stdout);
 }
 

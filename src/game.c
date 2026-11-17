@@ -38,6 +38,7 @@ typedef struct {
 
 static snake_t snake;
 static volatile uint32_t timer_1ms_counter;
+static uint16_t best_score;
 
 static void increase_snake_size();
 static void init_data();
@@ -57,7 +58,7 @@ uint16_t play_game() {
 		if (move_snake() == true) {
 			break;
 		}
-		render_board(snake.board);
+		render_board(snake.board, snake.body.size, best_score);
 		while(timer_1ms_counter < SNAKE_SPEED) {
 			usleep(1000);
 		}
@@ -74,7 +75,9 @@ static void increase_snake_size() {
 		assert(snake.body.arr != NULL);
 		snake.body.max_size++;
 	}
-	snake.body.size++;
+	if(++snake.body.size > best_score) {
+		best_score = snake.body.size;
+	}
 }
 static void init_data() {
 	signal(SIGALRM, timer_1ms);
@@ -95,6 +98,9 @@ static void init_data() {
 	snake.body.max_size = INITIAL_SNAKE_SIZE;
 	snake.body.arr[0] = (coord_t){0, 1};
 	snake.body.arr[1] = (coord_t){0, 0};
+	if(best_score < INITIAL_SNAKE_SIZE) {
+		best_score = INITIAL_SNAKE_SIZE;
+	}
 
 	for(size_t i = 0;i < NUM_OF_APPLES;i++) {
 		spawn_new_apple();
